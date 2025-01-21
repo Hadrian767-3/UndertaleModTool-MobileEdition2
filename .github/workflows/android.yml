@@ -1,0 +1,61 @@
+name: Build Xamarin Android
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Xamarin Android APK
+    runs-on: windows-latest
+
+    steps:
+      # Passo 1: Checkout do código
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Passo 2: Configurar o .NET
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '6.0.x' # Certifique-se de usar a versão correta do .NET para o Xamarin
+
+      # Passo 3: Instalar o Visual Studio com suporte ao Xamarin
+      - name: Install Visual Studio with Xamarin
+        uses: microsoft/setup-msbuild@v1
+      - name: Install Xamarin workload
+        run: |
+          choco install visualstudio2022-workload-mobiledevelopment --ignore-checksums -y
+          # Recarregar variáveis de ambiente
+          powershell -Command "Import-Module $env:ChocolateyInstall\helpers\chocolateyProfile.psm1; refreshenv"
+
+      # Passo 4: Restaurar pacotes NuGet
+      - name: Restore NuGet packages
+        run: nuget restore UndertaleModTool.sln
+
+      # Passo 5: Compilar o projeto
+      - name: Build Xamarin Android Project
+        run: msbuild UndertaleModTool.sln /t:Build /p:Configuration=Release /p:Platform="Any CPU"
+
+      # Passo 6: Assinar e gerar o APK
+      - name: Sign and generate APK
+        env:
+          KEYSTORE_FILE: ${{ secrets.KEYSTORE_FILE }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          # Caminho para o APK gerado
+          APK_PATH="path\to\your\output\apk\app-release-unsigned.apk"
+          
+          # Assinar o APK
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore $KEYSTORE_FILE -storepass $KEYSTORE_PASSWORD -keypass $KEY_PASSWORD $APK_PATH $KEY_ALIAS
+          
+          # Alinhar o APK
+          zipalign -v 4 $APK_PATH app-release.apk
+
+      # Passo 7: Fazer upload do APK como artefato
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-release.apk
+          path: app-release.apk
