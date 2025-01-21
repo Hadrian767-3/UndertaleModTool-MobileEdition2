@@ -21,7 +21,7 @@ jobs:
 
       # Passo 3: Instalar o Visual Studio com suporte ao Xamarin
       - name: Install Visual Studio with Xamarin
-        uses: microsoft/setup-msbuild@v1
+        uses: microsoft/setup-msbuild@v2
       - name: Install Xamarin workload
         run: |
           choco install visualstudio2022-workload-mobiledevelopment --ignore-checksums -y
